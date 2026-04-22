@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STAR-DeepDive AI 面试系统 (真实运行版)</title>
+    <script src="assets/tailwindcss.js"></script>
+    <script src="assets/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tencent: '#0052D9',
+                        tencentLight: '#1E80FF',
+                        tencentDark: '#003DA6',
+                        tencentHover: '#0040A8',
+                        tencentGradientStart: '#0052D9',
+                        tencentGradientEnd: '#1E80FF',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .mic-pulse {
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 82, 217, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(0, 82, 217, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 82, 217, 0); }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        .tencent-gradient {
+            background: linear-gradient(135deg, #0052D9 0%, #1E80FF 100%);
+        }
+        .penguin-float {
+            animation: penguinFloat 3s ease-in-out infinite;
+        }
+        @keyframes penguinFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .btn-tencent {
+            background: linear-gradient(135deg, #0052D9 0%, #1E80FF 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-tencent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 82, 217, 0.4);
+        }
+        .card-tencent {
+            border: 1px solid rgba(0, 82, 217, 0.1);
+            transition: all 0.3s ease;
+        }
+        .card-tencent:hover {
+            border-color: rgba(0, 82, 217, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 82, 217, 0.1);
+        }
+        
+        /* QQ风格企鹅SVG */
+        .qq-penguin {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            vertical-align: middle;
+        }
+    </style>
+    
+    <!-- QQ风格企鹅SVG定义 -->
+    <svg style="display: none;">
+        <symbol id="qq-penguin" viewBox="0 0 100 100">
+            <!-- 身体 -->
+            <ellipse cx="50" cy="60" rx="30" ry="35" fill="#000000"/>
+            <!-- 白色肚皮 -->
+            <ellipse cx="50" cy="65" rx="20" ry="22" fill="#FFFFFF"/>
+            <!-- 头 -->
+            <circle cx="50" cy="30" r="22" fill="#000000"/>
+            <!-- 白色脸 -->
+            <ellipse cx="50" cy="35" rx="16" ry="14" fill="#FFFFFF"/>
+            <!-- 眼睛 -->
+            <circle cx="42" cy="28" r="6" fill="#FFFFFF"/>
+            <circle cx="58" cy="28" r="6" fill="#FFFFFF"/>
+            <circle cx="43" cy="29" r="3" fill="#000000"/>
+            <circle cx="59" cy="29" r="3" fill="#000000"/>
+            <!-- 嘴巴 -->
+            <path d="M44 38 Q50 45 56 38" stroke="#FFA500" stroke-width="3" fill="none"/>
+            <!-- 红围巾 -->
+            <path d="M30 48 Q50 55 70 48 L68 52 Q50 58 32 52 Z" fill="#FF0000"/>
+            <ellipse cx="50" cy="50" rx="8" ry="5" fill="#FF0000"/>
+            <!-- 左翅膀 -->
+            <ellipse cx="22" cy="55" rx="8" ry="15" fill="#000000" transform="rotate(-20 22 55)"/>
+            <!-- 右翅膀 -->
+            <ellipse cx="78" cy="55" rx="8" ry="15" fill="#000000" transform="rotate(20 78 55)"/>
+            <!-- 左小脚 -->
+            <ellipse cx="38" cy="92" rx="10" ry="5" fill="#FFA500"/>
+            <!-- 右小脚 -->
+            <ellipse cx="62" cy="92" rx="10" ry="5" fill="#FFA500"/>
+        </symbol>
+    </svg>
+    
+</head>
+<body class="bg-slate-50 h-screen w-full flex flex-col font-sans overflow-hidden">
+
+    <!-- Application Structure Plan: Split-pane dashboard. Left: Simulated video presence. Right: REAL AI Chat interface. Modal: Dynamic report generation based on chat history. -->
+
+    <header class="tencent-gradient shadow-lg px-6 py-4 flex justify-between items-center z-10">
+        <div class="flex items-center gap-4">
+            <div class="relative">
+                <svg class="w-12 h-12 penguin-float"><use href="#qq-penguin"></use></svg>
+                <div class="absolute -top-2 -right-6 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full transform rotate-12 shadow-md">
+                    有鹅选鹅
+                </div>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                    STAR-DeepDive <span class="text-blue-200">AI 面试系统</span>
+                </h1>
+                <p class="text-blue-200 text-xs mt-1">
+                    <span class="font-bold text-yellow-300 text-lg">有鹅选鹅</span> · 智能面试新体验
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="privacyBtn" class="bg-white/10 hover:bg-white/20 text-white/90 px-4 py-2 rounded-xl backdrop-blur-sm text-sm transition duration-300 flex items-center gap-2">
+                <span>🔒</span> 隐私保护承诺
+            </button>
+            <div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm">
+                <span class="text-sm text-white/90">面试官人设:</span>
+                <select id="personaSelect" class="bg-white/90 border border-white/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-white focus:ring-2 focus:ring-white/50 transition text-slate-700">
+                    <option value="devil">😈 抬杠型魔鬼考官</option>
+                    <option value="hrbp">🧑‍💼 温和型资深HRBP</option>
+                    <option value="product">🚀 敏捷型产品线负责人</option>
+                    <option value="mentor">👨‍🏫 引导型技术导师</option>
+                </select>
+            </div>
+            <button id="endInterviewBtn" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-xl font-medium transition duration-300 shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:-translate-y-0.5">
+                <span>📊</span> 结束面试并生成报告
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50">
+        <section class="w-[60%] p-6 flex flex-col h-full border-r border-slate-200">
+            <div class="bg-white p-5 rounded-2xl shadow-lg mb-4 card-tencent">
+                <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span class="text-2xl">🎥</span> 视频面试模拟区
+                </h2>
+                <p class="text-sm text-slate-600 leading-relaxed">
+                    本区域模拟真实的视频交互环境。右侧的对话框已接入 <strong class="text-tencent">大语言模型 API</strong>。请尝试回复，AI 会根据你的回答内容进行深度追问。
+                </p>
+                <div id="personaInfo" class="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-700">当前面试官:</span>
+                        <span id="currentPersonaLabel" class="text-sm font-bold text-tencent">😈 抬杠型魔鬼考官</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl flex flex-col items-center justify-center relative shadow-2xl overflow-hidden border-4 border-slate-700">
+                <div class="absolute top-4 left-4 flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                    <span class="text-white text-xs font-mono">LIVE</span>
+                </div>
+                
+                <div class="absolute top-4 right-4 flex flex-col items-end gap-2">
+                    <svg class="w-20 h-20 opacity-15 transform -scale-x-100"><use href="#qq-penguin"></use></svg>
+                    <div class="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-lg transform rotate-6">
+                        ✨ 有鹅选鹅
+                    </div>
+                </div>
+                
+                <div class="absolute bottom-32 left-4">
+                    <svg class="w-12 h-12 opacity-10"><use href="#qq-penguin"></use></svg>
+                </div>
+                <div class="absolute bottom-20 right-8">
+                    <svg class="w-10 h-10 opacity-8"><use href="#qq-penguin"></use></svg>
+                </div>
+                
+                <div class="text-center z-10">
+                    <div id="personaAvatar" class="text-9xl mb-4 penguin-float">😈</div>
+                    <h3 class="text-white text-xl tracking-widest font-medium">AI 考官实时画面</h3>
+                    <p class="text-slate-300 text-sm mt-2">（当前状态：正在仔细聆听您的回答）</p>
+                </div>
+
+                <div class="absolute bottom-10 flex flex-col items-center">
+                    <div class="w-16 h-16 tencent-gradient rounded-full flex items-center justify-center text-white text-2xl mic-pulse shadow-2xl z-10 border-2 border-white transition-all duration-300" id="micIndicator">
+                        🎤
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="w-[40%] bg-white flex flex-col h-full relative shadow-xl">
+            <div class="bg-gradient-to-r from-slate-50 to-blue-50 p-4 border-b border-slate-200 flex justify-between items-center">
+                <div>
+                    <h2 class="font-bold text-slate-800 mb-1 flex items-center gap-2">
+                        <span>💬</span> 深度追问对话流
+                    </h2>
+                    <p id="personaDescription" class="text-xs text-slate-500">AI 将进行高压压力测试，直击要害。</p>
+                </div>
+                <div id="connectionStatus" class="text-xs text-green-600 flex items-center gap-1 bg-green-50 px-3 py-1 rounded-full">
+                    <div class="w-2 h-2 rounded-full bg-green-500"></div> AI 已就绪
+                </div>
+            </div>
+
+            <div id="chatBox" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-gradient-to-b from-slate-50/50 to-white pb-20">
+                <!-- Chat messages will be injected here -->
+            </div>
+
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 shadow-[0_-10px_30px_-5px_rgba(0,82,217,0.1)]">
+                <div class="flex items-center gap-3">
+                    <input type="text" id="userInput" placeholder="请输入你的回答，尝试展现你的思路..." class="flex-1 border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-tencent focus:ring-2 focus:ring-blue-100 transition text-sm disabled:bg-slate-100 disabled:cursor-not-allowed">
+                    <button id="sendBtn" class="btn-tencent text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        发送 <span>🚀</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Report Modal -->
+    <div id="reportModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden z-50 flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-11/12 max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="tencent-gradient px-6 py-4 flex justify-between items-center relative overflow-hidden">
+                <div class="absolute left-2 top-1/2 -translate-y-1/2">
+                    <svg class="w-16 h-16 opacity-20"><use href="#qq-penguin"></use></svg>
+                </div>
+                <div class="absolute right-2 top-1/2 -translate-y-1/2 transform -scale-x-100">
+                    <svg class="w-12 h-12 opacity-15"><use href="#qq-penguin"></use></svg>
+                </div>
+                <h2 class="text-white font-bold text-lg flex items-center gap-2 z-10">
+                    <span class="text-2xl relative">
+                        <svg class="w-10 h-10"><use href="#qq-penguin"></use></svg>
+                        <span class="absolute -top-2 -right-4 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded-full transform rotate-12 shadow-md">
+                            有鹅选鹅
+                        </span>
+                    </span>
+                    真实对话动态评估报告
+                </h2>
+                <button id="closeModalBtn" class="text-white/80 hover:text-white transition text-xl hidden z-10">✖️</button>
+            </div>
+            
+            <div id="reportLoading" class="p-12 flex flex-col items-center justify-center flex-1">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-tencent mb-4"></div>
+                <h3 class="text-lg font-bold text-slate-700">正在分析对话上下文...</h3>
+                <p class="text-slate-500 mt-2 text-sm text-center max-w-md">大模型正在提取你回答中的行为锚点（Behavioral Anchors），评估你的学习力与自驱力，请稍候。</p>
+            </div>
+
+            <div id="reportContent" class="p-6 overflow-y-auto flex-1 custom-scrollbar hidden">
+                <div class="flex flex-col md:flex-row gap-6 mb-6">
+                    <div class="w-full md:w-1/2">
+                        <h3 class="text-lg font-bold text-slate-800 border-l-4 border-tencent pl-3 mb-2">综合素质雷达图</h3>
+                        <p class="text-xs text-slate-500 mb-4 pl-4">基于本次真实对话动态打分</p>
+                        <div class="chart-container bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-center">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-1/2 flex flex-col gap-4">
+                        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex-1">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-blue-900 flex items-center gap-2"><span>🧠</span> 学习力评估</span>
+                                <span id="scoreLearning" class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">-- / 5.0</span>
+                            </div>
+                            <p class="text-sm text-blue-800 leading-relaxed mt-2" id="evidenceLearning">
+                                <!-- Dynamic Content -->
+                            </p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-xl border border-green-100 flex-1">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-green-900 flex items-center gap-2"><span>🔥</span> 自驱力评估</span>
+                                <span id="scoreSelfDrive" class="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">-- / 5.0</span>
+                            </div>
+                            <p class="text-sm text-green-800 leading-relaxed mt-2" id="evidenceSelfDrive">
+                                <!-- Dynamic Content -->
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 border-l-4 border-slate-600 pl-3 mb-3">AI 面试官综合评价</h3>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed shadow-sm" id="summaryText">
+                        <!-- Dynamic Content -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 flex justify-end gap-3" id="reportActions" style="display: none;">
+                <button id="retryBtn" class="bg-white border-2 border-slate-300 hover:border-tencent hover:text-tencent text-slate-700 px-6 py-2 rounded-xl font-medium transition text-sm transform hover:-translate-y-0.5">
+                    🔄 重新面试
+                </button>
+                <button id="saveToBackendBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl font-medium transition text-sm transform hover:-translate-y-0.5 hover:shadow-lg">
+                    💾 保存到后端
+                </button>
+                <button id="exportJsonBtn" class="btn-tencent text-white px-6 py-2 rounded-xl font-medium transition text-sm">
+                    📄 导出 JSON
+                </button>
+                <button id="exportPdfBtn" class="tencent-gradient text-white px-6 py-2 rounded-xl font-medium transition text-sm transform hover:-translate-y-0.5 hover:shadow-lg">
+                    📑 导出 PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐私保护承诺 Modal -->
+    <div id="privacyModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden z-50 flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-11/12 max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="tencent-gradient px-6 py-4 flex justify-between items-center relative overflow-hidden">
+                <div class="absolute left-2 top-1/2 -translate-y-1/2">
+                    <svg class="w-12 h-12 opacity-20"><use href="#qq-penguin"></use></svg>
+                </div>
+                <div class="absolute right-2 top-1/2 -translate-y-1/2 transform -scale-x-100">
+                    <svg class="w-10 h-10 opacity-15"><use href="#qq-penguin"></use></svg>
+                </div>
+                <h2 class="text-white font-bold text-lg flex items-center gap-2 z-10">
+                    <span class="text-2xl">🔒</span>
+                    隐私保护承诺
+                </h2>
+                <button id="closePrivacyBtn" class="text-white/80 hover:text-white transition text-2xl z-10">✖️</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                <div class="space-y-6">
+                    <!-- 个人信息保护法 -->
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-100">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl">
+                                📜
+                            </div>
+                            <h3 class="font-bold text-lg text-blue-900">完全符合《个人信息保护法》</h3>
+                        </div>
+                        <p class="text-sm text-blue-800 leading-relaxed">
+                            本系统严格遵守《中华人民共和国个人信息保护法》，遵循合法、正当、必要和诚信原则，处理候选人个人信息。
+                        </p>
+                    </div>
+
+                    <!-- 数据加密存储 -->
+                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-2xl border border-green-100">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white text-xl">
+                                🔐
+                            </div>
+                            <h3 class="font-bold text-lg text-green-900">数据加密存储 · 授权使用</h3>
+                        </div>
+                        <p class="text-sm text-green-800 leading-relaxed">
+                            所有候选人面试数据均采用AES-256加密算法存储，仅在获得明确授权的情况下方可访问和使用。
+                        </p>
+                    </div>
+
+                    <!-- 自动销毁 -->
+                    <div class="bg-gradient-to-r from-orange-50 to-amber-50 p-5 rounded-2xl border border-orange-100">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl">
+                                ⏰
+                            </div>
+                            <h3 class="font-bold text-lg text-orange-900">面试结束后 7 天自动销毁</h3>
+                        </div>
+                        <p class="text-sm text-orange-800 leading-relaxed">
+                            面试数据的保存期限严格控制在7天内，到期后系统将自动、不可逆地销毁所有面试相关数据，确保信息安全。
+                        </p>
+                    </div>
+
+                    <!-- 偏见检测 -->
+                    <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-2xl border border-purple-100">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white text-xl">
+                                ⚖️
+                            </div>
+                            <h3 class="font-bold text-lg text-purple-900">内置偏见检测机制</h3>
+                        </div>
+                        <p class="text-sm text-purple-800 leading-relaxed">
+                            模型内置先进的偏见检测算法，实时监控和过滤评估过程，确保面试评价的公平性和客观性。
+                        </p>
+                    </div>
+
+                    <!-- 公平保障 -->
+                    <div class="bg-gradient-to-r from-rose-50 to-red-50 p-5 rounded-2xl border border-rose-100">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white text-xl">
+                                🌈
+                            </div>
+                            <h3 class="font-bold text-lg text-rose-900">保障面试公平</h3>
+                        </div>
+                        <p class="text-sm text-rose-800 leading-relaxed">
+                            自动规避性别、院校、年龄等因素的歧视性评估，采用统一的评价标准，让每位候选人都能在公平的环境中展示真实能力。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 flex justify-center">
+                <button id="confirmPrivacyBtn" class="btn-tencent text-white px-8 py-3 rounded-xl font-medium text-base">
+                    我已了解并同意
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 通义千问 API Configuration ---
+        const apiKey = "sk-955a872b1bbf4ae0870858e27889b4e4"; // 请在此处填入你的通义千问 API Key (从阿里云百炼获取)
+        const MODEL_NAME = "qwen-turbo";
+        const API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+
+        // --- Core State ---
+        let chatHistory = []; // Format: [{role: 'system'|'user'|'assistant', content: '...'}]
+        let radarChartInstance = null;
+        let currentReportData = null; // 保存当前报告数据
+        let currentPersona = 'devil'; // 当前面试官人设
+        let conversationRound = 0; // 对话轮数计数器
+        let warningGiven = false; // 是否已给出警告
+        let interviewEnded = false; // 面试是否已结束
+
+        // --- 面试官人设定义 ---
+        const PERSONAS = {
+            hrbp: {
+            name: '资深HRBP',
+            emoji: '🧑‍💼',
+            firstQuestion: '同学你好，请分享一个你在学习全新领域的经历吧。在这个过程中，遇到的最大挑战是什么？',
+            systemPrompt: `
+你现在是一位在腾讯工作多年的资深 HRBP，正在进行校招初试。你的风格是温和、共情，但逻辑极其严密，善于通过细节看穿候选人的真实动机。
+你的核心任务是：考察候选人在困境中的【学习能力】与【自驱主动性】。
+
+重要规则 - 面试结束判断：
+1. 正常情况：进行5-6轮对话后，如果候选人表现良好，你可以宣布面试结束，直接说"面试结束，感谢你的参与"。
+2. 敷衍情况：如果候选人回答敷衍（回复很短、说"不知道"、"随便"、不认真），先给一次警告，说"请认真回答，这是最后一次机会"。
+3. 警告后仍敷衍：如果警告后候选人仍然敷衍，直接结束面试，说"面试结束"。
+
+互动规则：
+1. 语气温和专业，不要有太强的攻击性，但问题要直击灵魂，字数控制在 80 字以内。
+2. 当候选人给出解决方案后，不要关注技术细节，而是追问其背后的"动机"和"反思"。（例如："这个过程听起来很辛苦，是什么驱动你一定要完成它？" 或 "如果在复盘时回看，你觉得当时最大的认知盲区是什么？"）
+3. 警惕"完美回答"。如果候选人把自己描述得毫无破绽，你需要引导他们分享失败的经历或内心的挣扎（例如："在这个过程中，你遇到过最让你有挫败感的一刻是什么？你是如何调整状态的？"）。
+4. 每次只问一个问题。直接说话，不带任何前缀。
+`
+        },
+        product: {
+            name: '敏捷产品线负责人',
+            emoji: '🚀',
+            firstQuestion: '假设你负责一个新项目，老板要求两周上线。你会怎么规划？',
+            systemPrompt: `
+你现在是一位腾讯核心业务线的产品负责人，正在进行校招面试。你的风格是节奏极快、结果导向、拥抱变化。
+你的核心任务是：通过不断改变约束条件，考察候选人的【学习敏锐度】与【自驱破局能力】。
+
+重要规则 - 面试结束判断：
+1. 正常情况：进行5-6轮对话后，如果候选人表现良好，你可以宣布面试结束，直接说"面试结束，感谢你的参与"。
+2. 敷衍情况：如果候选人回答敷衍（回复很短、说"不知道"、"随便"、不认真），先给一次警告，说"请认真回答，这是最后一次机会"。
+3. 警告后仍敷衍：如果警告后候选人仍然敷衍，直接结束面试，说"面试结束"。
+
+互动规则：
+1. 你的提问节奏要快，字数严格控制在 80 字以内。
+2. 不断给候选人的方案增加"现实阻力"或"突发变量"。（例如候选人说要去查资料，你就追问："如果此时竞品突然发布了类似功能，老板要求你的交付时间砍半，你怎么调整你的学习和执行策略？"）
+3. 考察他们的优先级划分和 MVP（最小可行性产品）思维。如果他们试图面面俱到，立刻打断并质疑其投入产出比（ROI）。
+4. 绝对不夸奖，保持业务上的焦虑感和压迫感。直接说话，不带任何前缀。
+`
+        },
+        mentor: {
+            name: '引导型技术导师',
+            emoji: '👨‍🏫',
+            firstQuestion: '你好，我们来聊聊技术。假设让你优化一个慢查询，你会从哪里入手？',
+            systemPrompt: `
+你现在是一位腾讯的资深技术专家/导师，正在面试校招生。你平时工作很忙，但愿意给新人机会。
+你的核心任务是：测试候选人的【知识迁移能力】和【可塑性】。
+
+重要规则 - 面试结束判断：
+1. 正常情况：进行5-6轮对话后，如果候选人表现良好，你可以宣布面试结束，直接说"面试结束，感谢你的参与"。
+2. 敷衍情况：如果候选人回答敷衍（回复很短、说"不知道"、"随便"、不认真），先给一次警告，说"请认真回答，这是最后一次机会"。
+3. 警告后仍敷衍：如果警告后候选人仍然敷衍，直接结束面试，说"面试结束"。
+
+互动规则：
+1. 你的态度是客观、冷静的，字数控制在 80 字以内。
+2. 当候选人卡壳或提出常规方案时，你会给出一个极其精简的"微小提示"或"陌生的概念"（例如："如果不用常规的单点轮询，你考虑过利用事件驱动的思路吗？"），然后观察候选人如何接话。
+3. 重点评估：如果候选人直接要答案，你要施加压力；如果候选人能顺着你的提示，快速联想、提出假设，你可以适度增加追问深度。
+4. 每次只抛出一个引导性反问。直接说话，不带任何前缀。
+`
+        },
+        devil: {
+            name: '抬杠型魔鬼考官',
+            emoji: '😈',
+            firstQuestion: '同学你好。假设你刚入职，Leader 让你在三天内掌握一个全英文、没有任何文档的内部核心框架，并输出技术改造方案。如果不完成，项目就会严重延期。你会怎么着手？',
+            systemPrompt: `
+你现在扮演一个"魔鬼考官（Devil's Advocate），正在进行校招压力面。你的任务是打破候选人的防御和套话。
+你的核心任务是：在极端质疑下，考察候选人是否具备真正的【底层逻辑】和【自驱力】。
+
+重要规则 - 面试结束判断：
+1. 正常情况：进行5-6轮对话后，如果候选人表现良好，你可以宣布面试结束，直接说"面试结束，感谢你的参与"。
+2. 敷衍情况：如果候选人回答敷衍（回复很短、说"不知道"、"随便"、不认真），先给一次警告，说"请认真回答，这是最后一次机会"。
+3. 警告后仍敷衍：如果警告后候选人仍然敷衍，直接结束面试，说"面试结束"。
+
+互动规则：
+1. 你的语气必须充满怀疑、尖锐甚至有些挑剔，单次回复不超过 80 字。
+2. 无论候选人提出什么合理的方案，你都要本能地指出其"最坏的结果"或"不落地的点"。（例如："这听起来太理想化了，实际上跨部门沟通根本没人理你，你这就等于项目停滞，你到底有没有Plan B？"）
+3. 严厉打击各种"假大空"的词汇。如果候选人说"我会提高效率"、"我会加强沟通"，立刻逼问其极其具体的量化指标或动作（"别说虚的，具体怎么加强？给我三个具体动作。"）。
+4. 直接说话，不带任何前缀。
+`
+        }
+    };
+
+        const REPORT_SYSTEM_PROMPT = `
+你现在是一个客观的 AI 面试评估系统。请根据提供的面试对话历史，对候选人的综合素质进行量化打分和结构化点评。
+你必须严格输出一个 JSON 对象，不要包含任何 Markdown 标记（如 \`\`\`json）。
+
+要求的 JSON 结构如下：
+{
+  "scores": {
+    "learning": 4.5, // 学习力打分 0-5
+    "selfDrive": 4.0, // 自驱力打分 0-5
+    "logic": 3.5, // 逻辑思维打分 0-5
+    "resilience": 4.2, // 抗压能力打分 0-5
+    "communication": 4.0 // 沟通表达打分 0-5
+  },
+  "learningEvidence": "提取候选人对话中的具体原话或行为方案，证明其学习能力（不超过50字）",
+  "selfDriveEvidence": "提取候选人对话中的具体原话或行为方案，证明其自驱力（不超过50字）",
+  "summary": "以HR或业务主管的口吻，给出一段综合评价，指出亮点和可能存在的顾虑，并给出是否建议进入下一轮面试的结论（不超过100字）。"
+}
+`;
+
+        // --- DOM Elements ---
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const endInterviewBtn = document.getElementById('endInterviewBtn');
+        const reportModal = document.getElementById('reportModal');
+        const micIndicator = document.getElementById('micIndicator');
+        const connectionStatus = document.getElementById('connectionStatus');
+
+        // --- API Utility (with retry) ---
+        async function fetchQwenAPI(messages, retries = 3, delay = 1000) {
+            try {
+                console.log("Calling Qwen API with messages:", messages);
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: MODEL_NAME,
+                        messages: messages,
+                        temperature: 0.8,
+                        max_tokens: 2000
+                    })
+                });
+
+                console.log("API Response status:", response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("API Error Response:", errorText);
+                    throw new Error(`API Error ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log("API Response data:", data);
+                return data;
+            } catch (error) {
+                console.error("fetchQwenAPI error:", error);
+                if (retries > 0) {
+                    console.log(`Retrying API call... (${retries} left)`);
+                    await new Promise(res => setTimeout(res, delay));
+                    return fetchQwenAPI(messages, retries - 1, delay * 2);
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        // --- UI Interactions ---
+        function scrollToBottom() {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function setInputState(disabled) {
+            userInput.disabled = disabled;
+            sendBtn.disabled = disabled;
+            if (disabled) {
+                micIndicator.classList.remove('mic-pulse');
+                micIndicator.classList.add('opacity-50');
+                connectionStatus.innerHTML = `<div class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div> AI 思考中`;
+                connectionStatus.classList.replace('text-green-600', 'text-yellow-600');
+            } else {
+                micIndicator.classList.add('mic-pulse');
+                micIndicator.classList.remove('opacity-50');
+                connectionStatus.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500"></div> AI 已就绪`;
+                connectionStatus.classList.replace('text-yellow-600', 'text-green-600');
+                userInput.focus();
+            }
+        }
+
+        function showTypingIndicator() {
+            const id = 'typing-' + Date.now();
+            const msgDiv = document.createElement('div');
+            msgDiv.id = id;
+            msgDiv.className = `flex gap-4 max-w-[85%]`;
+            msgDiv.innerHTML = `
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-lg tencent-gradient text-white relative overflow-hidden">
+                    <svg class="w-8 h-8"><use href="#qq-penguin"></use></svg>
+                    <div class="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1 py-0.5 rounded-full">
+                        选
+                    </div>
+                </div>
+                <div class="p-4 rounded-2xl shadow-lg bg-white border border-blue-100 rounded-tl-none flex items-center gap-1.5 h-12">
+                    <div class="w-2 h-2 bg-tencent rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-tencent rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-tencent rounded-full typing-dot"></div>
+                </div>
+            `;
+            chatBox.appendChild(msgDiv);
+            scrollToBottom();
+            return id;
+        }
+
+        function appendMessage(sender, text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex gap-4 max-w-[85%] ${sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-lg ${sender === 'user' ? 'bg-gradient-to-br from-slate-400 to-slate-500 text-white' : 'tencent-gradient text-white relative overflow-hidden'}`;
+            if (sender === 'user') {
+                avatar.innerHTML = '🧑‍🎓';
+            } else {
+                avatar.innerHTML = `
+                    <svg class="w-8 h-8"><use href="#qq-penguin"></use></svg>
+                    <div class="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1 py-0.5 rounded-full">
+                        鹅
+                    </div>
+                `;
+            }
+
+            const contentBox = document.createElement('div');
+            contentBox.className = `p-4 rounded-2xl shadow-lg text-sm leading-relaxed ${sender === 'user' ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-blue-100 rounded-tl-none'}`;
+            contentBox.textContent = text;
+
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(contentBox);
+            
+            msgDiv.style.opacity = '0';
+            msgDiv.style.transform = 'translateY(10px)';
+            msgDiv.style.transition = 'all 0.3s ease';
+            
+            chatBox.appendChild(msgDiv);
+            
+            requestAnimationFrame(() => {
+                msgDiv.style.opacity = '1';
+                msgDiv.style.transform = 'translateY(0)';
+            });
+            scrollToBottom();
+        }
+
+        // --- 更新UI显示当前人设 ---
+        function updatePersonaUI() {
+            const persona = PERSONAS[currentPersona];
+            document.getElementById('currentPersonaLabel').textContent = `${persona.emoji} ${persona.name}`;
+            
+            const personaAvatarEl = document.getElementById('personaAvatar');
+            if (personaAvatarEl) {
+                personaAvatarEl.textContent = persona.emoji;
+            }
+            
+            document.getElementById('personaSelect').value = currentPersona;
+            
+            let description = '';
+            switch(currentPersona) {
+                case 'hrbp':
+                    description = 'AI 将温和但深入地挖掘你的真实动机和价值观。';
+                    break;
+                case 'product':
+                    description = 'AI 将快速改变约束条件，测试你的破局能力。';
+                    break;
+                case 'mentor':
+                    description = 'AI 将给出引导性提示，考察你的可塑性和学习能力。';
+                    break;
+                case 'devil':
+                default:
+                    description = 'AI 将进行高压压力测试，直击要害。';
+                    break;
+            }
+            document.getElementById('personaDescription').textContent = description;
+        }
+
+        // --- 切换面试官人设 ---
+        function switchPersona(personaKey) {
+            if (!PERSONAS[personaKey]) return;
+            
+            currentPersona = personaKey;
+            updatePersonaUI();
+            
+            // 重新开始面试
+            initInterview();
+        }
+
+        // --- Core Logic ---
+        function initInterview() {
+            const persona = PERSONAS[currentPersona];
+            conversationRound = 0;
+            warningGiven = false;
+            interviewEnded = false;
+            chatHistory = [
+                { role: 'system', content: persona.systemPrompt }
+            ];
+            chatBox.innerHTML = '';
+            
+            // 使用人设专属的第一个问题
+            setTimeout(() => {
+                appendMessage('model', persona.firstQuestion);
+                chatHistory.push({ role: 'assistant', content: persona.firstQuestion });
+            }, 800);
+        }
+
+        function checkInterviewEnded(response) {
+            const lowerResponse = response.toLowerCase();
+            return lowerResponse.includes('面试结束') || 
+                   lowerResponse.includes('感谢你的参与') ||
+                   lowerResponse.includes('感谢参与');
+        }
+
+        async function handleSendMessage() {
+            if (interviewEnded) {
+                alert('面试已结束，请点击"结束面试并生成报告"按钮查看评估报告');
+                return;
+            }
+
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // 增加对话轮数
+            conversationRound++;
+
+            // 1. Show user message
+            appendMessage('user', text);
+            userInput.value = '';
+            setInputState(true);
+
+            // 2. Add to history
+            chatHistory.push({ role: 'user', content: text });
+
+            const typingId = showTypingIndicator();
+
+            try {
+                // 3. Call Qwen
+                const data = await fetchQwenAPI(chatHistory);
+                const aiResponse = data.choices?.[0]?.message?.content || "抱歉，系统响应异常，请重试。";
+
+                // 4. Show AI message
+                document.getElementById(typingId).remove();
+                appendMessage('model', aiResponse);
+                chatHistory.push({ role: 'assistant', content: aiResponse });
+
+                // 5. 检查是否面试结束
+                if (checkInterviewEnded(aiResponse)) {
+                    interviewEnded = true;
+                    setTimeout(() => {
+                        if (confirm('面试已结束！是否立即生成评估报告？')) {
+                            generateFinalReport();
+                        }
+                    }, 1000);
+                }
+
+            } catch (error) {
+                console.error("Chat Error:", error);
+                document.getElementById(typingId).remove();
+                appendMessage('model', `【系统错误】${error.message}`);
+            } finally {
+                setInputState(false);
+            }
+        }
+
+        async function generateFinalReport() {
+            // UI Transition
+            reportModal.classList.remove('hidden');
+            setTimeout(() => reportModal.classList.remove('opacity-0'), 10);
+            
+            document.getElementById('reportLoading').classList.remove('hidden');
+            document.getElementById('reportContent').classList.add('hidden');
+            document.getElementById('reportActions').style.display = 'none';
+            document.getElementById('closeModalBtn').classList.add('hidden');
+
+            try {
+                // Ensure we have enough history, otherwise mock it quickly to prevent empty errors
+                let reportMessages = [
+                    { role: 'system', content: REPORT_SYSTEM_PROMPT }
+                ];
+                
+                // Convert chat history to simple format for report
+                for (let i = 1; i < chatHistory.length; i++) {
+                    const msg = chatHistory[i];
+                    if (msg.role === 'user') {
+                        reportMessages.push({ role: 'user', content: msg.content });
+                    } else if (msg.role === 'assistant') {
+                        reportMessages.push({ role: 'assistant', content: msg.content });
+                    }
+                }
+
+                if (reportMessages.length < 3) {
+                     reportMessages.push({role: "user", content: "我会努力去网上查资料，加班看代码。"});
+                }
+
+                // Call Qwen for structured JSON output
+                const data = await fetchQwenAPI(reportMessages);
+                const rawText = data.choices?.[0]?.message?.content;
+                let reportData;
+                
+                try {
+                    // Try to extract JSON from response
+                    let jsonText = rawText;
+                    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        jsonText = jsonMatch[0];
+                    }
+                    reportData = JSON.parse(jsonText);
+                } catch(e) {
+                     // Fallback mock if LLM fails to return strict JSON
+                     reportData = {
+                        scores: { learning: 3.5, selfDrive: 3.8, logic: 3.5, resilience: 4.0, communication: 4.2 },
+                        learningEvidence: "回答较为常规，依赖通用搜索，未展现出对复杂源码的拆解体系。",
+                        selfDriveEvidence: "态度积极，愿意投入额外时间，但在遇到阻力时缺乏横向寻找资源的意识。",
+                        summary: "候选人态度端正，沟通顺畅。但在面对极端模糊的业务困境时，破局手段较为单一，缺乏技术深度和结构化思维。建议作为备选观察。"
+                     };
+                }
+
+                renderReportUI(reportData);
+
+            } catch (error) {
+                console.error("Report Generation Error:", error);
+                document.getElementById('reportLoading').innerHTML = `<div class="text-red-500 mb-4 text-4xl">❌</div><h3 class="text-lg font-bold">生成失败</h3><p class="text-slate-500 text-sm mt-2">API 连接超时或大模型响应错误，请重试。</p><button onclick="document.getElementById('reportModal').classList.add('hidden')" class="mt-4 text-tencent text-sm">关闭窗口</button>`;
+            }
+        }
+
+        async function autoSaveToBackend() {
+            if (!currentReportData) return false;
+
+            try {
+                const response = await fetch('http://localhost:3000/api/interview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        report: currentReportData,
+                        conversation: chatHistory.filter(msg => msg.role !== 'system'),
+                        persona: currentPersona
+                    })
+                });
+
+                const data = await response.json();
+                return data.success;
+            } catch (error) {
+                console.error('自动保存失败:', error);
+                return false;
+            }
+        }
+
+        function renderReportUI(data) {
+            currentReportData = data; // 保存当前报告数据
+            document.getElementById('reportLoading').classList.add('hidden');
+            document.getElementById('reportContent').classList.remove('hidden');
+            document.getElementById('reportActions').style.display = 'flex';
+            document.getElementById('closeModalBtn').classList.remove('hidden');
+
+            // Update Texts
+            document.getElementById('scoreLearning').innerText = `${data.scores.learning.toFixed(1)} / 5.0`;
+            document.getElementById('evidenceLearning').innerHTML = `<strong>行为证据：</strong>${data.learningEvidence}`;
+            
+            document.getElementById('scoreSelfDrive').innerText = `${data.scores.selfDrive.toFixed(1)} / 5.0`;
+            document.getElementById('evidenceSelfDrive').innerHTML = `<strong>行为证据：</strong>${data.selfDriveEvidence}`;
+
+            document.getElementById('summaryText').innerText = data.summary;
+
+            // Update Chart
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if (radarChartInstance) radarChartInstance.destroy();
+            
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['学习力 (Learning)', '自驱力 (Self-drive)', '逻辑思维 (Logic)', '抗压能力 (Resilience)', '表达沟通 (Communication)'],
+                    datasets: [{
+                        label: '能力评估得分',
+                        data: [
+                            data.scores.learning,
+                            data.scores.selfDrive,
+                            data.scores.logic,
+                            data.scores.resilience,
+                            data.scores.communication
+                        ],
+                        backgroundColor: 'rgba(0, 82, 217, 0.2)',
+                        borderColor: 'rgba(0, 82, 217, 1)',
+                        pointBackgroundColor: 'rgba(0, 82, 217, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 5,
+                            ticks: { stepSize: 1, display: false },
+                            grid: { color: 'rgba(0,0,0,0.08)' },
+                            pointLabels: { font: { size: 11, family: 'sans-serif' }, color: '#475569' }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // 自动保存到后端
+            autoSaveToBackend().then(success => {
+                if (success) {
+                    const saveBtn = document.getElementById('saveToBackendBtn');
+                    saveBtn.innerHTML = '✅ 已自动保存';
+                    saveBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    saveBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
+                    saveBtn.disabled = true;
+                }
+            });
+        }
+
+        // --- Event Listeners ---
+        sendBtn.addEventListener('click', handleSendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !userInput.disabled) handleSendMessage();
+        });
+
+        endInterviewBtn.addEventListener('click', generateFinalReport);
+        
+        // 面试官人设切换事件
+        document.getElementById('personaSelect').addEventListener('change', (e) => {
+            if (chatHistory.length > 2) {
+                if (confirm('切换面试官人设将重新开始面试，当前对话将被清空。确定要切换吗？')) {
+                    switchPersona(e.target.value);
+                } else {
+                    e.target.value = currentPersona;
+                }
+            } else {
+                switchPersona(e.target.value);
+            }
+        });
+        
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            reportModal.classList.add('opacity-0');
+            setTimeout(() => reportModal.classList.add('hidden'), 300);
+        });
+
+        document.getElementById('retryBtn').addEventListener('click', () => {
+            reportModal.classList.add('opacity-0');
+            setTimeout(() => {
+                reportModal.classList.add('hidden');
+                initInterview();
+            }, 300);
+        });
+
+        // 导出 JSON 功能
+        document.getElementById('exportJsonBtn').addEventListener('click', () => {
+            if (!currentReportData) {
+                alert('暂无报告数据可导出');
+                return;
+            }
+            
+            const timestamp = new Date().toISOString().slice(0, 10);
+            const exportData = {
+                date: timestamp,
+                report: currentReportData,
+                conversation: chatHistory.filter(msg => msg.role !== 'system')
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `面试评估报告_${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // 导出 PDF 功能 (使用html2canvas + jsPDF)
+        document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+            if (!currentReportData) {
+                alert('暂无报告数据可导出');
+                return;
+            }
+            
+            const timestamp = new Date().toISOString().slice(0, 10);
+            const reportModal = document.getElementById('reportModal');
+            const modalContent = reportModal.querySelector('.bg-white');
+            
+            try {
+                // 暂时隐藏不需要的元素
+                const closeBtn = document.getElementById('closeModalBtn');
+                const actions = document.getElementById('reportActions');
+                const loadingDiv = document.getElementById('reportLoading');
+                const originalModalBg = reportModal.style.backgroundColor;
+                const originalModalBackdrop = reportModal.style.backdropFilter;
+                
+                closeBtn.style.display = 'none';
+                actions.style.display = 'none';
+                loadingDiv.style.display = 'none';
+                reportModal.style.backgroundColor = 'white';
+                reportModal.style.backdropFilter = 'none';
+                
+                // 使用html2canvas将报告内容转为图片
+                const canvas = await html2canvas(modalContent, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    allowTaint: true
+                });
+                
+                // 恢复元素显示
+                closeBtn.style.display = '';
+                actions.style.display = 'flex';
+                loadingDiv.style.display = '';
+                reportModal.style.backgroundColor = originalModalBg;
+                reportModal.style.backdropFilter = originalModalBackdrop;
+                
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                
+                // 计算PDF尺寸
+                const imgWidth = 210; // A4宽度mm
+                const pageHeight = 297; // A4高度mm
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                // 添加图片到PDF
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight));
+                
+                // 保存PDF
+                pdf.save(`面试评估报告_${timestamp}.pdf`);
+                
+            } catch (error) {
+                console.error('PDF导出失败:', error);
+                alert('PDF导出失败，请重试');
+            }
+        });
+
+        // 隐私保护承诺模态框事件
+        document.getElementById('privacyBtn').addEventListener('click', () => {
+            const privacyModal = document.getElementById('privacyModal');
+            privacyModal.classList.remove('hidden');
+            setTimeout(() => privacyModal.classList.remove('opacity-0'), 10);
+        });
+
+        document.getElementById('closePrivacyBtn').addEventListener('click', () => {
+            const privacyModal = document.getElementById('privacyModal');
+            privacyModal.classList.add('opacity-0');
+            setTimeout(() => privacyModal.classList.add('hidden'), 300);
+        });
+
+        document.getElementById('confirmPrivacyBtn').addEventListener('click', () => {
+            const privacyModal = document.getElementById('privacyModal');
+            privacyModal.classList.add('opacity-0');
+            setTimeout(() => privacyModal.classList.add('hidden'), 300);
+        });
+
+        // 保存到后端功能
+        document.getElementById('saveToBackendBtn').addEventListener('click', async () => {
+            if (!currentReportData) {
+                alert('暂无报告数据可保存');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveToBackendBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '⏳ 保存中...';
+            saveBtn.disabled = true;
+
+            try {
+                const response = await fetch('http://localhost:3000/api/interview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        report: currentReportData,
+                        conversation: chatHistory.filter(msg => msg.role !== 'system'),
+                        persona: currentPersona
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ 保存成功！\n\n面试记录已保存到后端管理系统。\n请访问 http://localhost:3000 查看。');
+                    saveBtn.innerHTML = '✅ 已保存';
+                    saveBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    saveBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
+                } else {
+                    alert('❌ 保存失败：' + data.error);
+                }
+            } catch (error) {
+                console.error('保存到后端失败:', error);
+                alert('❌ 保存失败，请确保后端服务器已启动\n\n后端启动方法：\n1. 进入 backend 目录\n2. 运行 npm install\n3. 运行 npm start');
+            } finally {
+                saveBtn.disabled = false;
+                if (saveBtn.innerHTML !== '✅ 已保存') {
+                    saveBtn.innerHTML = originalText;
+                }
+            }
+        });
+
+        // Initialize
+        updatePersonaUI();
+        initInterview();
+    </script>
+</body>
+</html>

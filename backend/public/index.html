@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STAR-DeepDive AI 面试系统 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tencent: '#0052D9',
+                        tencentLight: '#1E80FF',
+                        tencentDark: '#003DA6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .tencent-gradient {
+            background: linear-gradient(135deg, #0052D9 0%, #1E80FF 100%);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .penguin-float {
+            animation: penguinFloat 3s ease-in-out infinite;
+        }
+        @keyframes penguinFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <header class="tencent-gradient shadow-lg px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <svg class="w-12 h-12 penguin-float text-white" viewBox="0 0 100 100">
+                        <ellipse cx="50" cy="60" rx="30" ry="35" fill="#000000"/>
+                        <ellipse cx="50" cy="65" rx="20" ry="22" fill="#FFFFFF"/>
+                        <circle cx="50" cy="30" r="22" fill="#000000"/>
+                        <ellipse cx="50" cy="35" rx="16" ry="14" fill="#FFFFFF"/>
+                        <circle cx="42" cy="28" r="6" fill="#FFFFFF"/>
+                        <circle cx="58" cy="28" r="6" fill="#FFFFFF"/>
+                        <circle cx="43" cy="29" r="3" fill="#000000"/>
+                        <circle cx="59" cy="29" r="3" fill="#000000"/>
+                        <path d="M44 38 Q50 45 56 38" stroke="#FFA500" stroke-width="3" fill="none"/>
+                        <path d="M30 48 Q50 55 70 48 L68 52 Q50 58 32 52 Z" fill="#FF0000"/>
+                        <ellipse cx="50" cy="50" rx="8" ry="5" fill="#FF0000"/>
+                        <ellipse cx="22" cy="55" rx="8" ry="15" fill="#000000" transform="rotate(-20 22 55)"/>
+                        <ellipse cx="78" cy="55" rx="8" ry="15" fill="#000000" transform="rotate(20 78 55)"/>
+                        <ellipse cx="38" cy="92" rx="10" ry="5" fill="#FFA500"/>
+                        <ellipse cx="62" cy="92" rx="10" ry="5" fill="#FFA500"/>
+                    </svg>
+                    <div class="absolute -top-2 -right-6 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full transform rotate-12 shadow-md">
+                        有鹅选鹅
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">
+                        STAR-DeepDive <span class="text-blue-200">AI 面试管理后台</span>
+                    </h1>
+                    <p class="text-blue-200 text-xs mt-1">面试记录管理系统</p>
+                </div>
+            </div>
+            <button onclick="loadInterviews()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl transition flex items-center gap-2">
+                <span>🔄</span> 刷新列表
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6">
+        <div id="loading" class="text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-tencent mx-auto mb-4"></div>
+            <p class="text-slate-500">加载面试记录中...</p>
+        </div>
+
+        <div id="interviewList" class="hidden"></div>
+
+        <div id="emptyState" class="hidden text-center py-20">
+            <div class="text-6xl mb-4">📭</div>
+            <h3 class="text-xl font-bold text-slate-700 mb-2">暂无面试记录</h3>
+            <p class="text-slate-500">完成面试后，记录会自动保存到这里</p>
+        </div>
+    </main>
+
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden z-50 flex items-center justify-center">
+        <div class="bg-white w-11/12 max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="tencent-gradient px-6 py-4 flex justify-between items-center">
+                <h2 class="text-white font-bold text-lg flex items-center gap-2">
+                    <span>📋</span> 面试详情
+                </h2>
+                <button onclick="closeDetailModal()" class="text-white/80 hover:text-white transition text-2xl">✖️</button>
+            </div>
+            <div id="detailContent" class="p-6 overflow-y-auto flex-1 custom-scrollbar"></div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+                <button onclick="deleteInterview()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition">
+                    🗑️ 删除记录
+                </button>
+                <button onclick="closeDetailModal()" class="bg-slate-300 hover:bg-slate-400 text-slate-700 px-6 py-2 rounded-xl transition">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentInterviewId = null;
+        const PERSONA_NAMES = {
+            'devil': '😈 抬杠型魔鬼考官',
+            'hrbp': '🧑‍💼 温和型资深HRBP',
+            'product': '🚀 敏捷型产品线负责人',
+            'mentor': '👨‍🏫 引导型技术导师'
+        };
+
+        async function loadInterviews() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('interviewList').classList.add('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/interviews');
+                const data = await response.json();
+
+                if (data.success && data.interviews.length > 0) {
+                    renderInterviewList(data.interviews);
+                    document.getElementById('interviewList').classList.remove('hidden');
+                } else {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+                alert('加载面试记录失败，请重试');
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function renderInterviewList(interviews) {
+            const container = document.getElementById('interviewList');
+            container.innerHTML = interviews.map(interview => `
+                <div class="bg-white rounded-2xl shadow-lg mb-4 p-6 border border-slate-200 hover:border-tencent/30 transition cursor-pointer" onclick="showDetail(${interview.id})">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-sm font-medium text-tencent">${PERSONA_NAMES[interview.persona] || interview.persona}</span>
+                                <span class="text-xs text-slate-400">•</span>
+                                <span class="text-xs text-slate-500">${interview.createdAt}</span>
+                            </div>
+                            <div class="grid grid-cols-5 gap-4 mb-3">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-blue-600">${interview.report.scores.learning.toFixed(1)}</div>
+                                    <div class="text-xs text-slate-500">学习力</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-green-600">${interview.report.scores.selfDrive.toFixed(1)}</div>
+                                    <div class="text-xs text-slate-500">自驱力</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-purple-600">${interview.report.scores.logic.toFixed(1)}</div>
+                                    <div class="text-xs text-slate-500">逻辑思维</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-orange-600">${interview.report.scores.resilience.toFixed(1)}</div>
+                                    <div class="text-xs text-slate-500">抗压能力</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-pink-600">${interview.report.scores.communication.toFixed(1)}</div>
+                                    <div class="text-xs text-slate-500">沟通表达</div>
+                                </div>
+                            </div>
+                            <p class="text-sm text-slate-600 line-clamp-2">${interview.report.summary}</p>
+                        </div>
+                        <div class="ml-4 text-slate-400">
+                            <span class="text-2xl">→</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function showDetail(id) {
+            currentInterviewId = id;
+            try {
+                const response = await fetch(`/api/interview/${id}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderDetail(data.interview);
+                    document.getElementById('detailModal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('加载详情失败:', error);
+                alert('加载面试详情失败');
+            }
+        }
+
+        function renderDetail(interview) {
+            const container = document.getElementById('detailContent');
+            const conversationHtml = interview.conversation.map(msg => `
+                <div class="flex gap-4 mb-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-gradient-to-br from-slate-400 to-slate-500 text-white' : 'tencent-gradient text-white'}">
+                        ${msg.role === 'user' ? '🧑‍🎓' : '🐧'}
+                    </div>
+                    <div class="p-4 rounded-2xl shadow-lg text-sm leading-relaxed ${msg.role === 'user' ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-blue-100 rounded-tl-none'} max-w-[80%]">
+                        ${msg.content}
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="mb-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-lg font-bold text-tencent">${PERSONA_NAMES[interview.persona] || interview.persona}</span>
+                        <span class="text-sm text-slate-500">${interview.createdAt}</span>
+                    </div>
+                    
+                    <div class="bg-slate-50 rounded-2xl p-6 mb-6">
+                        <h3 class="font-bold text-slate-800 mb-4">📊 能力评分</h3>
+                        <div class="grid grid-cols-5 gap-4">
+                            <div class="text-center p-4 bg-white rounded-xl">
+                                <div class="text-3xl font-bold text-blue-600 mb-1">${interview.report.scores.learning.toFixed(1)}</div>
+                                <div class="text-sm text-slate-600">学习力</div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 mt-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: ${interview.report.scores.learning * 20}%"></div>
+                                </div>
+                            </div>
+                            <div class="text-center p-4 bg-white rounded-xl">
+                                <div class="text-3xl font-bold text-green-600 mb-1">${interview.report.scores.selfDrive.toFixed(1)}</div>
+                                <div class="text-sm text-slate-600">自驱力</div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 mt-2">
+                                    <div class="bg-green-600 h-2 rounded-full" style="width: ${interview.report.scores.selfDrive * 20}%"></div>
+                                </div>
+                            </div>
+                            <div class="text-center p-4 bg-white rounded-xl">
+                                <div class="text-3xl font-bold text-purple-600 mb-1">${interview.report.scores.logic.toFixed(1)}</div>
+                                <div class="text-sm text-slate-600">逻辑思维</div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 mt-2">
+                                    <div class="bg-purple-600 h-2 rounded-full" style="width: ${interview.report.scores.logic * 20}%"></div>
+                                </div>
+                            </div>
+                            <div class="text-center p-4 bg-white rounded-xl">
+                                <div class="text-3xl font-bold text-orange-600 mb-1">${interview.report.scores.resilience.toFixed(1)}</div>
+                                <div class="text-sm text-slate-600">抗压能力</div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 mt-2">
+                                    <div class="bg-orange-600 h-2 rounded-full" style="width: ${interview.report.scores.resilience * 20}%"></div>
+                                </div>
+                            </div>
+                            <div class="text-center p-4 bg-white rounded-xl">
+                                <div class="text-3xl font-bold text-pink-600 mb-1">${interview.report.scores.communication.toFixed(1)}</div>
+                                <div class="text-sm text-slate-600">沟通表达</div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 mt-2">
+                                    <div class="bg-pink-600 h-2 rounded-full" style="width: ${interview.report.scores.communication * 20}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-100">
+                        <h3 class="font-bold text-blue-900 mb-3">🧠 学习力评估</h3>
+                        <p class="text-blue-800"><strong>行为证据：</strong>${interview.report.learningEvidence}</p>
+                    </div>
+
+                    <div class="bg-green-50 rounded-2xl p-6 mb-6 border border-green-100">
+                        <h3 class="font-bold text-green-900 mb-3">🔥 自驱力评估</h3>
+                        <p class="text-green-800"><strong>行为证据：</strong>${interview.report.selfDriveEvidence}</p>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-2xl p-6 mb-6 border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-3">📝 综合评价</h3>
+                        <p class="text-slate-700">${interview.report.summary}</p>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-slate-800 mb-4">💬 完整对话记录</h3>
+                        <div class="bg-slate-50 rounded-2xl p-6">
+                            ${conversationHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            currentInterviewId = null;
+        }
+
+        async function deleteInterview() {
+            if (!currentInterviewId) return;
+            if (!confirm('确定要删除这条面试记录吗？此操作不可恢复。')) return;
+
+            try {
+                const response = await fetch(`/api/interview/${currentInterviewId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('删除成功');
+                    closeDetailModal();
+                    loadInterviews();
+                } else {
+                    alert('删除失败：' + data.error);
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                alert('删除失败，请重试');
+            }
+        }
+
+        loadInterviews();
+    </script>
+</body>
+</html>

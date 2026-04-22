@@ -1,0 +1,18 @@
+{
+  "name": "star-deepdive-backend",
+  "version": "1.0.0",
+  "description": "STAR-DeepDive AI 面试系统后端",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["interview", "ai", "assessment"],
+  "author": "有鹅选鹅",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  }
+}
